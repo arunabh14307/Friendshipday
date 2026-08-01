@@ -41,21 +41,112 @@ export const Certificate: React.FC<CertificateProps> = ({ cardData, onOpenShareM
   };
 
   const handleDownloadPNG = async () => {
-    if (!certRef.current) return;
+    setIsExporting(true);
     try {
-      setIsExporting(true);
+      if (!certRef.current) throw new Error('No ref');
       const canvas = await html2canvas(certRef.current, {
         scale: 2.5,
         useCORS: true,
-        backgroundColor: '#0F172A'
+        allowTaint: true,
+        backgroundColor: '#0F172A',
+        logging: false,
+        imageTimeout: 5000,
       });
       const dataUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
-      link.download = `Official_Friendship_Certificate_${cardData.friendName.replace(/\s+/g, '_')}.png`;
+      link.download = `Official_Friendship_Certificate_${(cardData.friendName || 'Friend').replace(/\s+/g, '_')}.png`;
       link.href = dataUrl;
+      document.body.appendChild(link);
       link.click();
-    } catch (err) {
-      console.error("Failed to export certificate", err);
+      document.body.removeChild(link);
+    } catch (_err) {
+      // Fallback: Canvas 2D drawn certificate (no CORS issues)
+      try {
+        const W = 900; const H = 640;
+        const cv = document.createElement('canvas');
+        cv.width = W; cv.height = H;
+        const ctx = cv.getContext('2d')!;
+
+        // Background
+        const bg = ctx.createLinearGradient(0, 0, W, H);
+        bg.addColorStop(0, '#0f172a'); bg.addColorStop(0.5, '#1e1b4b'); bg.addColorStop(1, '#0f172a');
+        ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+        // Outer border
+        ctx.strokeStyle = '#FFD166'; ctx.lineWidth = 4;
+        ctx.roundRect(12, 12, W - 24, H - 24, 28); ctx.stroke();
+        // Inner border
+        ctx.strokeStyle = 'rgba(255,209,102,0.35)'; ctx.lineWidth = 1.5;
+        ctx.roundRect(24, 24, W - 48, H - 48, 22); ctx.stroke();
+
+        // Title area
+        ctx.fillStyle = '#FFD166';
+        ctx.font = 'bold 13px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('✦  OFFICIAL DIGITAL FRIENDSHIP CERTIFICATE  ✦', W/2, 70);
+
+        // Award icon placeholder
+        ctx.fillStyle = 'rgba(255,209,102,0.15)';
+        ctx.beginPath(); ctx.arc(W/2, 140, 36, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#FFD166';
+        ctx.font = 'bold 36px serif';
+        ctx.fillText('🏆', W/2 - 18, 158);
+
+        // Headline
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 48px Georgia, serif';
+        ctx.fillText('Certificate of', W/2, 225);
+        const grad = ctx.createLinearGradient(W/2 - 200, 0, W/2 + 200, 0);
+        grad.addColorStop(0, '#FF6FB5'); grad.addColorStop(1, '#FFD166');
+        ctx.fillStyle = grad;
+        ctx.font = 'bold 52px Georgia, serif';
+        ctx.fillText('Best Friendship', W/2, 285);
+
+        // Body text
+        ctx.fillStyle = '#94A3B8';
+        ctx.font = '15px Inter, sans-serif';
+        ctx.fillText('This is to certify that the extraordinary bond shared by', W/2, 340);
+
+        // Names
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 34px Georgia, serif';
+        ctx.fillText(`${cardData.friendName || 'Friend'} & ${cardData.yourName || 'You'}`, W/2, 390);
+
+        // Tagline
+        ctx.fillStyle = '#FFD166';
+        ctx.font = 'italic 16px Georgia, serif';
+        ctx.fillText(`"${cardData.tagline || 'Forever Best Friends'}"`, W/2, 430);
+
+        // Description line
+        ctx.fillStyle = '#94A3B8';
+        ctx.font = '13px Inter, sans-serif';
+        ctx.fillText('is hereby officially certified as Gold Standard Friendship — built on trust, loyalty, and unforgettable memories.', W/2, 465);
+
+        // Divider
+        ctx.strokeStyle = 'rgba(255,209,102,0.3)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(100, 500); ctx.lineTo(W - 100, 500); ctx.stroke();
+
+        // Footer
+        ctx.fillStyle = '#64748B';
+        ctx.font = '11px Inter, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('FRIENDVERSE OFFICIAL REGISTRY', 80, 535);
+        ctx.textAlign = 'right';
+        ctx.fillText('ISSUED: AUGUST 2026', W - 80, 535);
+        ctx.textAlign = 'center';
+        ctx.fillText('🌟 Gold Standard Friendship 🌟', W/2, 580);
+
+        const dataUrl = cv.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = `Official_Friendship_Certificate_${(cardData.friendName || 'Friend').replace(/\s+/g, '_')}.png`;
+        link.href = dataUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (fallbackErr) {
+        console.error('Certificate download failed:', fallbackErr);
+        alert('Download failed. Please try again.');
+      }
     } finally {
       setIsExporting(false);
     }

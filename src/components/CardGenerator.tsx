@@ -158,21 +158,125 @@ export const CardGenerator: React.FC<CardGeneratorProps> = ({ cardData, onUpdate
   };
 
   const handleDownloadPNG = async () => {
-    if (!cardRef.current) return;
+    setIsDownloading(true);
     try {
-      setIsDownloading(true);
-      const canvas = await html2canvas(cardRef.current, {
+      // Try html2canvas first with both CORS options
+      const canvas = await html2canvas(cardRef.current!, {
         scale: 2,
         useCORS: true,
-        backgroundColor: null
+        allowTaint: true,
+        backgroundColor: '#0F172A',
+        logging: false,
+        imageTimeout: 5000,
       });
       const dataUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       link.download = `FriendVerse_${(cardData.friendName || 'Friend').replace(/\s+/g, '_')}_Card.png`;
       link.href = dataUrl;
+      document.body.appendChild(link);
       link.click();
-    } catch (err) {
-      console.error("Failed to download card PNG", err);
+      document.body.removeChild(link);
+    } catch (_err) {
+      // Fallback: draw a beautiful card using Canvas 2D directly (no CORS issues)
+      try {
+        const W = 800;
+        const H = 520;
+        const cv = document.createElement('canvas');
+        cv.width = W; cv.height = H;
+        const ctx = cv.getContext('2d')!;
+
+        // Background gradient
+        const bg = ctx.createLinearGradient(0, 0, W, H);
+        bg.addColorStop(0, '#1e1b4b');
+        bg.addColorStop(0.5, '#4c1d95');
+        bg.addColorStop(1, '#0f172a');
+        ctx.fillStyle = bg;
+        ctx.roundRect(0, 0, W, H, 32);
+        ctx.fill();
+
+        // Pink/gold accent border
+        ctx.strokeStyle = '#FF6FB5';
+        ctx.lineWidth = 3;
+        ctx.roundRect(6, 6, W - 12, H - 12, 28);
+        ctx.stroke();
+
+        // Badge pill
+        ctx.fillStyle = 'rgba(255,255,255,0.12)';
+        ctx.roundRect(W/2 - 130, 30, 260, 32, 16);
+        ctx.fill();
+        ctx.fillStyle = '#FFD166';
+        ctx.font = 'bold 13px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('✨  Happy Friendship Day 💜  ✨', W/2, 52);
+
+        // Names
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 42px Georgia, serif';
+        ctx.fillText(cardData.friendName || "Friend's Name", W/2, 150);
+        ctx.fillStyle = '#FFD166';
+        ctx.font = 'bold 22px Inter, sans-serif';
+        ctx.fillText(`& ${cardData.yourName || 'Your Name'}`, W/2, 190);
+
+        // Tagline pill
+        const tagText = `"${cardData.tagline || 'Forever Best Friends'}"`;
+        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+        ctx.roundRect(W/2 - 200, 210, 400, 36, 18);
+        ctx.fill();
+        ctx.fillStyle = '#E2E8F0';
+        ctx.font = 'bold 14px Inter, sans-serif';
+        ctx.fillText(tagText, W/2, 233);
+
+        // Message
+        ctx.fillStyle = '#CBD5E1';
+        ctx.font = 'italic 13px Georgia, serif';
+        const msg = `"${cardData.message || 'Happy Friendship Day!'}"`;
+        // Word wrap
+        const maxW = 640;
+        const words = msg.split(' ');
+        let line = ''; let y = 290;
+        for (const word of words) {
+          const testLine = line + word + ' ';
+          if (ctx.measureText(testLine).width > maxW && line) {
+            ctx.fillText(line.trim(), W/2, y);
+            line = word + ' '; y += 22;
+          } else { line = testLine; }
+        }
+        if (line) ctx.fillText(line.trim(), W/2, y);
+
+        // Secret message area
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.roundRect(W/2 - 180, y + 24, 360, 70, 14);
+        ctx.fill();
+        ctx.fillStyle = '#FF6FB5';
+        ctx.font = 'bold 12px Inter, sans-serif';
+        ctx.fillText('💌 Secret Message:', W/2, y + 48);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 14px Inter, sans-serif';
+        ctx.fillText(cardData.secretMessage || '', W/2, y + 72);
+
+        // Footer
+        ctx.fillStyle = 'rgba(255,255,255,0.12)';
+        ctx.fillRect(0, H - 44, W, 44);
+        ctx.roundRect(0, H - 44, W, 44, [0, 0, 28, 28]);
+        ctx.fill();
+        ctx.fillStyle = '#94A3B8';
+        ctx.font = '11px Inter, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('FRIENDVERSE OFFICIAL', 32, H - 16);
+        ctx.textAlign = 'right';
+        ctx.fillText('AUGUST 2026', W - 32, H - 16);
+
+        const dataUrl = cv.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = `FriendVerse_${(cardData.friendName || 'Friend').replace(/\s+/g, '_')}_Card.png`;
+        link.href = dataUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (fallbackErr) {
+        console.error('Download failed completely:', fallbackErr);
+        alert('Download failed. Please try again.');
+      }
     } finally {
       setIsDownloading(false);
     }

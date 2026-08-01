@@ -2,7 +2,13 @@ import type { FriendshipCardData } from '../types';
 
 export function encodeCardToUrl(card: FriendshipCardData): string {
   try {
-    const jsonStr = JSON.stringify(card);
+    // Strip photo URLs (they can be huge base64 strings that make the QR unreadable)
+    const shareableCard = {
+      ...card,
+      friendPhotoUrl: '',
+      yourPhotoUrl: '',
+    };
+    const jsonStr = JSON.stringify(shareableCard);
     const base64 = btoa(encodeURIComponent(jsonStr));
     const url = new URL(window.location.href);
     url.hash = `card=${base64}`;
