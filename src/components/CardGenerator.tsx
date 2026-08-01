@@ -228,189 +228,310 @@ export const CardGenerator: React.FC<CardGeneratorProps> = ({ cardData, onUpdate
   const handleDownloadPNG = async () => {
     setIsDownloading(true);
     try {
-      // Load both photos in parallel (CORS-safe with fallback)
       const [friendImg, yourImg] = await Promise.all([
         loadImg(cardData.friendPhotoUrl),
         loadImg(cardData.yourPhotoUrl),
       ]);
 
-      const W = 520;
-      const H = 840;
-      const SCALE = 2; // Retina quality
+      const W = 540;
+      const SCALE = 2;
+
+      // ── First pass: measure content height dynamically ──
+      const measureCanvas = document.createElement('canvas');
+      measureCanvas.width = W;
+      measureCanvas.height = 1;
+      const mctx = measureCanvas.getContext('2d')!;
+
+      // Simulate message wrap to find height
+      mctx.font = 'italic 13px Georgia, serif';
+      const msgText = `"${cardData.message || 'Happy Friendship Day!'}"`;
+      const msgWords = msgText.split(' ');
+      let mLine = ''; let mLines = 1;
+      for (const w of msgWords) {
+        const t = mLine + w + ' ';
+        if (mctx.measureText(t).width > W - 80 && mLine) { mLine = w + ' '; mLines++; } else { mLine = t; }
+      }
+
+      mctx.font = 'bold 13px Inter, Arial, sans-serif';
+      const secText = cardData.secretMessage || '';
+      const secWords = secText.split(' ');
+      let sLine = ''; let sLines = 1;
+      for (const w of secWords) {
+        const t = sLine + w + ' ';
+        if (mctx.measureText(t).width > W - 120 && sLine) { sLine = w + ' '; sLines++; } else { sLine = t; }
+      }
+
+      // Layout constants
+      const TOP_PAD = 24;
+      const PILL_H = 32;
+      const PHOTO_GAP = 18;
+      const PHOTO_R = 62;
+      const PHOTO_BLOCK = PHOTO_R * 2 + 28; // photo + labels
+      const NAMES_BLOCK = 72;
+      const TAGLINE_BLOCK = 46;
+      const MSG_BLOCK = 28 + mLines * 22;
+      const BADGE_BLOCK = 56;
+      const DIVIDER_BLOCK = 36;
+      const SECRET_BOX_H = 54 + sLines * 20;
+      const SECRET_BLOCK = SECRET_BOX_H + 24;
+      const CERT_BLOCK = 70;
+      const FOOTER_H = 54;
+
+      const H = TOP_PAD + PILL_H + PHOTO_GAP + PHOTO_BLOCK + NAMES_BLOCK +
+                TAGLINE_BLOCK + MSG_BLOCK + BADGE_BLOCK + DIVIDER_BLOCK +
+                SECRET_BLOCK + CERT_BLOCK + FOOTER_H + 16;
+
+      // ── Create real canvas ──
       const cv = document.createElement('canvas');
       cv.width = W * SCALE;
       cv.height = H * SCALE;
       const ctx = cv.getContext('2d')!;
       ctx.scale(SCALE, SCALE);
 
-      // ── Background ──
+      // ── 1. Rich gradient background ──
       const bg = ctx.createLinearGradient(0, 0, W, H);
-      bg.addColorStop(0, '#1a1040');
-      bg.addColorStop(0.5, '#2d1b69');
-      bg.addColorStop(1, '#0f172a');
+      bg.addColorStop(0, '#130d3a');
+      bg.addColorStop(0.35, '#1e0f5e');
+      bg.addColorStop(0.7, '#2a1260');
+      bg.addColorStop(1, '#0c0820');
       ctx.fillStyle = bg;
       rrect(ctx, 0, 0, W, H, 28);
       ctx.fill();
 
-      // Subtle purple radial glow
-      const glow = ctx.createRadialGradient(W / 2, 120, 10, W / 2, 120, 280);
-      glow.addColorStop(0, 'rgba(108,99,255,0.22)');
-      glow.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = glow;
-      ctx.fillRect(0, 0, W, H);
+      // Subtle dot grid pattern
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      for (let gx = 18; gx < W; gx += 22) {
+        for (let gy = 18; gy < H; gy += 22) {
+          ctx.beginPath(); ctx.arc(gx, gy, 1, 0, Math.PI * 2); ctx.fill();
+        }
+      }
 
-      // ── Border ──
-      ctx.strokeStyle = 'rgba(255,111,181,0.55)';
-      ctx.lineWidth = 2;
-      rrect(ctx, 4, 4, W - 8, H - 8, 26);
-      ctx.stroke();
+      // Corner radial glows
+      const glowTL = ctx.createRadialGradient(0, 0, 5, 0, 0, 200);
+      glowTL.addColorStop(0, 'rgba(108,99,255,0.28)'); glowTL.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = glowTL; ctx.fillRect(0, 0, W, H);
 
-      // ── Top-right accent icons ──
-      ctx.font = '18px serif';
-      ctx.textAlign = 'right';
-      ctx.fillStyle = '#FF6FB5';
-      ctx.fillText('♥', W - 36, 42);
-      ctx.fillStyle = '#FFD166';
-      ctx.font = '14px serif';
-      ctx.fillText('✦', W - 14, 44);
+      const glowBR = ctx.createRadialGradient(W, H, 5, W, H, 220);
+      glowBR.addColorStop(0, 'rgba(255,111,181,0.22)'); glowBR.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = glowBR; ctx.fillRect(0, 0, W, H);
 
-      // ── HAPPY FRIENDSHIP DAY pill ──
-      const pillW = 224, pillH = 28;
-      const pillX = W / 2 - pillW / 2;
-      ctx.fillStyle = 'rgba(255,255,255,0.12)';
-      rrect(ctx, pillX, 26, pillW, pillH, 14);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-      ctx.lineWidth = 1;
-      rrect(ctx, pillX, 26, pillW, pillH, 14);
-      ctx.stroke();
+      // ── 2. Gradient border (outer + inner) ──
+      const borderGrad = ctx.createLinearGradient(0, 0, W, H);
+      borderGrad.addColorStop(0, '#6C63FF');
+      borderGrad.addColorStop(0.5, '#FF6FB5');
+      borderGrad.addColorStop(1, '#FFD166');
+      ctx.strokeStyle = borderGrad; ctx.lineWidth = 2.5;
+      rrect(ctx, 3, 3, W - 6, H - 6, 27); ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1;
+      rrect(ctx, 8, 8, W - 16, H - 16, 23); ctx.stroke();
+
+      // ── 3. Scattered sparkle decorations ──
+      const sparks = [
+        [28, 55, 8, '#FFD166'], [W - 28, 55, 6, '#FF6FB5'],
+        [18, H * 0.4, 5, '#6C63FF'], [W - 18, H * 0.38, 4, '#FFD166'],
+        [38, H * 0.72, 6, '#FF6FB5'], [W - 40, H * 0.68, 5, '#6C63FF'],
+        [W / 2 - 100, 76, 4, '#FFD166'], [W / 2 + 100, 76, 4, '#FF6FB5'],
+      ] as const;
+      for (const [sx, sy, sr, sc] of sparks) {
+        ctx.fillStyle = sc as string;
+        ctx.beginPath(); ctx.arc(sx as number, sy as number, sr as number, 0, Math.PI * 2); ctx.fill();
+        // 4-point star
+        ctx.beginPath();
+        ctx.moveTo(sx as number, (sy as number) - (sr as number) * 1.8);
+        ctx.lineTo(sx as number, (sy as number) + (sr as number) * 1.8);
+        ctx.moveTo((sx as number) - (sr as number) * 1.8, sy as number);
+        ctx.lineTo((sx as number) + (sr as number) * 1.8, sy as number);
+        ctx.strokeStyle = sc as string; ctx.lineWidth = 1; ctx.stroke();
+      }
+
+      let curY = TOP_PAD;
+
+      // ── 4. HAPPY FRIENDSHIP DAY pill ──
+      const pillW = 240;
+      ctx.fillStyle = 'rgba(255,255,255,0.1)';
+      rrect(ctx, W / 2 - pillW / 2, curY, pillW, PILL_H, 16); ctx.fill();
+      const pillBorder = ctx.createLinearGradient(W / 2 - pillW / 2, 0, W / 2 + pillW / 2, 0);
+      pillBorder.addColorStop(0, 'rgba(108,99,255,0.6)');
+      pillBorder.addColorStop(1, 'rgba(255,111,181,0.6)');
+      ctx.strokeStyle = pillBorder; ctx.lineWidth = 1;
+      rrect(ctx, W / 2 - pillW / 2, curY, pillW, PILL_H, 16); ctx.stroke();
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 10.5px Inter, Arial, sans-serif';
+      ctx.font = 'bold 11.5px Inter, Arial, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('HAPPY FRIENDSHIP DAY 💜', W / 2, 26 + 18.5);
+      ctx.fillText('✨  HAPPY FRIENDSHIP DAY  💜  ✨', W / 2, curY + 21);
+      curY += PILL_H + PHOTO_GAP;
 
-      // ── Overlapping circular photos ──
-      const photoR = 54;
-      const friendCX = W / 2 - 34;
-      const yourCX = W / 2 + 34;
-      const photoCY = 148;
-      const overlapGap = 6;
+      // ── 5. Overlapping circular photos ──
+      const photoR = PHOTO_R;
+      const friendCX = W / 2 - 40;
+      const yourCX = W / 2 + 40;
+      const photoCY = curY + photoR;
 
-      // Draw "You" photo first (behind)
-      // Gradient ring — You
+      // You ring
       const ringY = ctx.createLinearGradient(yourCX - photoR, photoCY - photoR, yourCX + photoR, photoCY + photoR);
-      ringY.addColorStop(0, '#FF6FB5');
-      ringY.addColorStop(1, '#FFD166');
-      ctx.strokeStyle = ringY;
-      ctx.lineWidth = 3.5;
-      ctx.beginPath(); ctx.arc(yourCX, photoCY, photoR + 2 + overlapGap / 2, 0, Math.PI * 2); ctx.stroke();
-      drawCirclePhoto(ctx, yourImg, yourCX, photoCY, photoR, '#FF6FB5');
+      ringY.addColorStop(0, '#FF6FB5'); ringY.addColorStop(1, '#FFD166');
+      ctx.strokeStyle = ringY; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(yourCX, photoCY, photoR + 4, 0, Math.PI * 2); ctx.stroke();
+      drawCirclePhoto(ctx, yourImg, yourCX, photoCY, photoR, '#c2185b');
 
-      // Draw "Friend" photo on top (overlapping)
-      // White separator ring
-      ctx.strokeStyle = '#1a1040';
-      ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.arc(friendCX, photoCY, photoR + 3, 0, Math.PI * 2); ctx.stroke();
-      // Gradient ring — Friend
+      // Dark separator + Friend ring
+      ctx.strokeStyle = '#130d3a'; ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.arc(friendCX, photoCY, photoR + 5, 0, Math.PI * 2); ctx.stroke();
       const ringF = ctx.createLinearGradient(friendCX - photoR, photoCY - photoR, friendCX + photoR, photoCY + photoR);
-      ringF.addColorStop(0, '#6C63FF');
-      ringF.addColorStop(1, '#FF6FB5');
-      ctx.strokeStyle = ringF;
-      ctx.lineWidth = 3.5;
-      ctx.beginPath(); ctx.arc(friendCX, photoCY, photoR + 2, 0, Math.PI * 2); ctx.stroke();
-      drawCirclePhoto(ctx, friendImg, friendCX, photoCY, photoR, '#6C63FF');
+      ringF.addColorStop(0, '#6C63FF'); ringF.addColorStop(1, '#FF6FB5');
+      ctx.strokeStyle = ringF; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(friendCX, photoCY, photoR + 3, 0, Math.PI * 2); ctx.stroke();
+      drawCirclePhoto(ctx, friendImg, friendCX, photoCY, photoR, '#4527a0');
 
-      // "Friend" label
-      const flbW = 48, flbH = 16;
-      ctx.fillStyle = '#FF6FB5';
-      rrect(ctx, friendCX - flbW / 2, photoCY + photoR - 7, flbW, flbH, 8);
-      ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 9px Inter, Arial, sans-serif';
+      // Badges under photos
+      const badgeLabelY = photoCY + photoR + 6;
+      const drawBadge = (bx: number, label: string, color: string) => {
+        const bw = 52, bh = 18;
+        ctx.fillStyle = color;
+        rrect(ctx, bx - bw / 2, badgeLabelY, bw, bh, 9); ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 9.5px Inter, Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, bx, badgeLabelY + 12.5);
+      };
+      drawBadge(friendCX, 'Friend', '#FF6FB5');
+      drawBadge(yourCX, 'You', '#6C63FF');
+      curY += PHOTO_BLOCK;
+
+      // ── 6. Names ──
       ctx.textAlign = 'center';
-      ctx.fillText('Friend', friendCX, photoCY + photoR + 5);
-
-      // "You" label
-      const ylbW = 36, ylbH = 16;
-      ctx.fillStyle = '#6C63FF';
-      rrect(ctx, yourCX - ylbW / 2, photoCY + photoR - 7, ylbW, ylbH, 8);
-      ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 9px Inter, Arial, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('You', yourCX, photoCY + photoR + 5);
-
-      // ── Names ──
+      // Friend name with text shadow effect (draw twice offset)
+      ctx.fillStyle = 'rgba(108,99,255,0.4)';
+      ctx.font = 'bold 40px Georgia, serif';
+      ctx.fillText(cardData.friendName || "Friend's Name", W / 2 + 2, curY + 42);
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 36px Georgia, serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(cardData.friendName || "Friend's Name", W / 2, 256);
+      ctx.fillText(cardData.friendName || "Friend's Name", W / 2, curY + 40);
 
       ctx.fillStyle = '#FFD166';
-      ctx.font = 'bold 15px Inter, Arial, sans-serif';
-      ctx.fillText(`& ${cardData.yourName || 'Your Name'}`, W / 2, 280);
+      ctx.font = 'bold 16px Inter, Arial, sans-serif';
+      ctx.fillText(`& ${cardData.yourName || 'Your Name'}`, W / 2, curY + 66);
+      curY += NAMES_BLOCK;
 
-      // ── Tagline pill ──
-      const tag = `"${cardData.tagline || 'Forever Best Friends'}"`;
+      // ── 7. Tagline pill ──
+      const tagText = `"${cardData.tagline || 'Forever Best Friends'}"`;
       ctx.font = 'bold 12px Inter, Arial, sans-serif';
-      const tagW = Math.min(ctx.measureText(tag).width + 44, W - 60);
-      ctx.fillStyle = 'rgba(255,255,255,0.09)';
-      rrect(ctx, W / 2 - tagW / 2, 298, tagW, 30, 15);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.16)';
-      ctx.lineWidth = 1;
-      rrect(ctx, W / 2 - tagW / 2, 298, tagW, 30, 15);
-      ctx.stroke();
+      const tagW = Math.min(ctx.measureText(tagText).width + 50, W - 60);
+      const tagGrad = ctx.createLinearGradient(W / 2 - tagW / 2, 0, W / 2 + tagW / 2, 0);
+      tagGrad.addColorStop(0, 'rgba(108,99,255,0.25)');
+      tagGrad.addColorStop(1, 'rgba(255,111,181,0.25)');
+      ctx.fillStyle = tagGrad;
+      rrect(ctx, W / 2 - tagW / 2, curY, tagW, 34, 17); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1;
+      rrect(ctx, W / 2 - tagW / 2, curY, tagW, 34, 17); ctx.stroke();
       ctx.fillStyle = '#E2E8F0';
       ctx.textAlign = 'center';
-      ctx.fillText(tag, W / 2, 318);
+      ctx.fillText(tagText, W / 2, curY + 22);
+      curY += TAGLINE_BLOCK;
 
-      // ── Heartfelt message ──
-      ctx.fillStyle = '#CBD5E1';
-      ctx.font = 'italic 12.5px Georgia, serif';
+      // ── 8. Heartfelt message ──
+      ctx.fillStyle = '#C7D2FE';
+      ctx.font = 'italic 13px Georgia, serif';
       ctx.textAlign = 'center';
       const fullMsg = `"${cardData.message || 'Happy Friendship Day!'}"`;
-      const lastMsgY = wrapText(ctx, fullMsg, W / 2, 358, W - 80, 21);
+      curY += 10;
+      const lastMsgY = wrapText(ctx, fullMsg, W / 2, curY, W - 80, 22);
+      curY = lastMsgY + 18;
 
-      // ── Secret message box ──
-      const secretBoxY = lastMsgY + 32;
-      const secretBoxH = 96;
-      ctx.fillStyle = 'rgba(0,0,0,0.42)';
-      rrect(ctx, 36, secretBoxY, W - 72, secretBoxH, 16);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255,111,181,0.25)';
-      ctx.lineWidth = 1;
-      rrect(ctx, 36, secretBoxY, W - 72, secretBoxH, 16);
-      ctx.stroke();
+      // ── 9. Badge row — fills space between sections ──
+      const badges = ['💫 BFFs Forever', '🌙 Late Night Crew', '🎉 Party Squad'];
+      const bColW = (W - 60) / 3;
+      badges.forEach((badge, i) => {
+        const bx = 30 + i * (bColW + 0) + bColW / 2;
+        const bColors = ['rgba(108,99,255,0.3)', 'rgba(255,111,181,0.3)', 'rgba(255,209,102,0.3)'];
+        const bBorders = ['rgba(108,99,255,0.7)', 'rgba(255,111,181,0.7)', 'rgba(255,209,102,0.7)'];
+        ctx.fillStyle = bColors[i];
+        rrect(ctx, 30 + i * (bColW + 0), curY, bColW - 4, 36, 10); ctx.fill();
+        ctx.strokeStyle = bBorders[i]; ctx.lineWidth = 1;
+        rrect(ctx, 30 + i * (bColW + 0), curY, bColW - 4, 36, 10); ctx.stroke();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 10.5px Inter, Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(badge, bx - 2, curY + 22);
+      });
+      curY += BADGE_BLOCK;
 
-      // Heart icon
-      ctx.fillStyle = '#FF6FB5';
-      ctx.font = '16px serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('♥', W / 2, secretBoxY + 24);
+      // ── 10. Decorative star divider ──
+      const divMid = curY - 8;
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(36, divMid); ctx.lineTo(W / 2 - 28, divMid); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(W / 2 + 28, divMid); ctx.lineTo(W - 36, divMid); ctx.stroke();
+      ctx.fillStyle = '#FFD166';
+      ctx.font = '16px serif'; ctx.textAlign = 'center';
+      ctx.fillText('✦', W / 2, divMid + 5);
+      ctx.font = '10px serif';
+      ctx.fillText('✦', W / 2 - 18, divMid + 4);
+      ctx.fillText('✦', W / 2 + 18, divMid + 4);
+      curY = divMid + DIVIDER_BLOCK - 20;
 
-      // "SECRET MESSAGE" label
-      ctx.fillStyle = '#94A3B8';
-      ctx.font = 'bold 9px Inter, Arial, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('SECRET MESSAGE', W / 2, secretBoxY + 42);
+      // ── 11. Secret message box ──
+      const secBoxH = SECRET_BOX_H;
+      const secBoxGrad = ctx.createLinearGradient(36, curY, W - 36, curY + secBoxH);
+      secBoxGrad.addColorStop(0, 'rgba(15,10,50,0.9)');
+      secBoxGrad.addColorStop(1, 'rgba(30,15,80,0.85)');
+      ctx.fillStyle = secBoxGrad;
+      rrect(ctx, 36, curY, W - 72, secBoxH, 16); ctx.fill();
+      // Glow border on secret box
+      const secBorder = ctx.createLinearGradient(36, curY, W - 36, curY + secBoxH);
+      secBorder.addColorStop(0, 'rgba(255,111,181,0.5)');
+      secBorder.addColorStop(1, 'rgba(108,99,255,0.5)');
+      ctx.strokeStyle = secBorder; ctx.lineWidth = 1.5;
+      rrect(ctx, 36, curY, W - 72, secBoxH, 16); ctx.stroke();
 
-      // Actual secret text (word-wrap)
+      // ♥ + label
+      ctx.font = '15px serif'; ctx.fillStyle = '#FF6FB5'; ctx.textAlign = 'center';
+      ctx.fillText('♥', W / 2, curY + 22);
+      ctx.font = 'bold 9px Inter, Arial, sans-serif'; ctx.fillStyle = '#94A3B8';
+      ctx.fillText('SECRET MESSAGE', W / 2, curY + 38);
+
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 13px Inter, Arial, sans-serif';
-      wrapText(ctx, cardData.secretMessage || '', W / 2, secretBoxY + 63, W - 100, 18);
+      ctx.font = 'bold 13.5px Inter, Arial, sans-serif';
+      const secStartY = curY + 56;
+      wrapText(ctx, cardData.secretMessage || '', W / 2, secStartY, W - 110, 20);
+      curY += secBoxH + 24;
 
-      // ── Footer ──
-      const footerY = H - 46;
-      ctx.fillStyle = 'rgba(255,255,255,0.07)';
-      ctx.fillRect(0, footerY, W, 46);
+      // ── 12. Gold certification stamp ──
+      // Outer ring
+      ctx.strokeStyle = 'rgba(255,209,102,0.3)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(W / 2, curY + 24, 30, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,209,102,0.15)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(W / 2, curY + 24, 26, 0, Math.PI * 2); ctx.stroke();
 
-      ctx.fillStyle = '#64748B';
+      // Star
+      ctx.fillStyle = '#FFD166';
+      ctx.font = '26px serif'; ctx.textAlign = 'center';
+      ctx.fillText('★', W / 2, curY + 31);
+
+      // "GOLD STANDARD FRIENDSHIP" text
+      ctx.font = 'bold 9px Inter, Arial, sans-serif';
+      ctx.fillStyle = '#FFD166';
+      ctx.fillText('GOLD STANDARD FRIENDSHIP', W / 2, curY + 56);
+      ctx.fillStyle = '#94A3B8';
+      ctx.font = '8.5px Inter, Arial, sans-serif';
+      ctx.fillText('CERTIFIED ✦ AUGUST 2026', W / 2, curY + 69);
+      curY += CERT_BLOCK;
+
+      // ── 13. Gradient footer ──
+      const footerGrad = ctx.createLinearGradient(0, curY, W, curY + FOOTER_H);
+      footerGrad.addColorStop(0, 'rgba(108,99,255,0.18)');
+      footerGrad.addColorStop(1, 'rgba(255,111,181,0.18)');
+      ctx.fillStyle = footerGrad;
+      rrect(ctx, 0, curY, W, FOOTER_H + 28, 28); ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(0, curY); ctx.lineTo(W, curY); ctx.stroke();
+
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
       ctx.font = '10px Inter, Arial, sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText('FRIENDVERSE OFFICIAL', 32, footerY + 28);
+      ctx.fillText('FRIENDVERSE OFFICIAL', 32, curY + 32);
       ctx.textAlign = 'right';
-      ctx.fillText('AUGUST 2026', W - 32, footerY + 28);
+      ctx.fillText('friendshipday-blsx.onrender.com', W - 32, curY + 32);
 
       // ── Download ──
       const dataUrl = cv.toDataURL('image/png');
@@ -427,6 +548,8 @@ export const CardGenerator: React.FC<CardGeneratorProps> = ({ cardData, onUpdate
       setIsDownloading(false);
     }
   };
+
+
 
   const handleShareCard = () => {
     const shareUrl = encodeCardToUrl(cardData);
