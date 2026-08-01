@@ -23,21 +23,29 @@ export function App() {
   const [activeShareUrl, setActiveShareUrl] = useState('');
   const [isAudioActive, setIsAudioActive] = useState(true); // Default ON
 
-  // Autoplay Guitar Audio on website open + eager event listeners for browser autoplay policies
+  // Automatic Audio Playback on website open
   useEffect(() => {
-    // Attempt immediate playback on mount
+    // Start audio automatically on page load
     guitarSynth.play();
 
-    const resumeAudioOnAnyInteraction = () => {
+    const forceResume = () => {
       guitarSynth.initCtx();
       guitarSynth.play();
     };
 
+    // Auto-attempt playback immediately & on window load
+    if (document.readyState === 'complete') {
+      forceResume();
+    } else {
+      window.addEventListener('load', forceResume, { once: true });
+    }
+
+    // Secondary fallback for strict browser policies
     const events = ['click', 'touchstart', 'pointerdown', 'keydown', 'scroll', 'mousemove'];
-    events.forEach(evt => window.addEventListener(evt, resumeAudioOnAnyInteraction, { once: true }));
+    events.forEach(evt => window.addEventListener(evt, forceResume, { once: true }));
 
     return () => {
-      events.forEach(evt => window.removeEventListener(evt, resumeAudioOnAnyInteraction));
+      events.forEach(evt => window.removeEventListener(evt, forceResume));
     };
   }, []);
 

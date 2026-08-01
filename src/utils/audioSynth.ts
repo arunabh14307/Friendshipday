@@ -18,6 +18,21 @@ class AcousticGuitarSynthEngine {
     [164.81, 246.94, 329.63, 392.00, 493.88, 659.25]
   ];
 
+  constructor() {
+    // Attempt automatic playback as soon as module is imported
+    if (typeof window !== 'undefined') {
+      const tryAutoPlay = () => {
+        this.play();
+      };
+      if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        tryAutoPlay();
+      } else {
+        window.addEventListener('DOMContentLoaded', tryAutoPlay, { once: true });
+        window.addEventListener('load', tryAutoPlay, { once: true });
+      }
+    }
+  }
+
   public initCtx() {
     if (!this.ctx) {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
