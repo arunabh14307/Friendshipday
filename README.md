@@ -1,32 +1,50 @@
-# React + TypeScript + Vite
+# 💜 FriendVerse — Premium Friendship Day Web Experience
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+FriendVerse is an Apple-level, visually stunning, modern digital Friendship Day web application. It features dynamic 3D cards, custom secret scratch card reveal, interactive virtual gift opening, official diploma certificate with badges, and background acoustic guitar melodies.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🚀 Deploying to Render (Step-by-Step)
 
-## React Compiler
+Follow these simple steps to deploy **FriendVerse** live on [Render](https://render.com) for free:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Option 1: Render Static Site (Recommended)
 
-## Expanding the Oxlint configuration
+1. Push your repository to **GitHub** (or **GitLab**).
+2. Go to [dashboard.render.com](https://dashboard.render.com/) and click **New +** → **Static Site**.
+3. Connect your **GitHub repository**.
+4. Configure the following settings:
+   - **Name**: `friendverse` (or your preferred name)
+   - **Branch**: `main` or `master`
+   - **Build Command**: `npm run build`
+   - **Publish Directory**: `dist`
+5. Click **Create Static Site**. Render will automatically build and deploy your app with a free HTTPS URL!
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+### Option 2: Render Blueprint (1-Click YAML)
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
+1. Go to [dashboard.render.com](https://dashboard.render.com/) and click **New +** → **Blueprint**.
+2. Connect your GitHub repository. Render will automatically read `render.yaml` and configure the static web service for you!
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+---
+
+## 🛠️ Local Development
+
+1. **Install Dependencies**:
+   ```bash
+   npm install
+   ```
+
+2. **Start Dev Server**:
+   ```bash
+   npm run dev
+   ```
+
+3. **Build for Production**:
+   ```bash
+   npm run build
+   ```
+
+4. **Preview Production Build**:
+   ```bash
+   npm run preview
+   ```
