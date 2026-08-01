@@ -275,11 +275,9 @@ export const CardGenerator: React.FC<CardGeneratorProps> = ({ cardData, onUpdate
       const SECRET_BOX_H = 54 + sLines * 20;
       const SECRET_BLOCK = SECRET_BOX_H + 24;
       const CERT_BLOCK = 70;
-      const FOOTER_H = 54;
-
       const H = TOP_PAD + PILL_H + PHOTO_GAP + PHOTO_BLOCK + NAMES_BLOCK +
                 TAGLINE_BLOCK + MSG_BLOCK + BADGE_BLOCK + DIVIDER_BLOCK +
-                SECRET_BLOCK + CERT_BLOCK + FOOTER_H + 16;
+                SECRET_BLOCK + CERT_BLOCK + 20;
 
       // ── Create real canvas ──
       const cv = document.createElement('canvas');
@@ -516,22 +514,7 @@ export const CardGenerator: React.FC<CardGeneratorProps> = ({ cardData, onUpdate
       ctx.fillText('CERTIFIED ✦ AUGUST 2026', W / 2, curY + 69);
       curY += CERT_BLOCK;
 
-      // ── 13. Gradient footer ──
-      const footerGrad = ctx.createLinearGradient(0, curY, W, curY + FOOTER_H);
-      footerGrad.addColorStop(0, 'rgba(108,99,255,0.18)');
-      footerGrad.addColorStop(1, 'rgba(255,111,181,0.18)');
-      ctx.fillStyle = footerGrad;
-      rrect(ctx, 0, curY, W, FOOTER_H + 28, 28); ctx.fill();
 
-      ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(0, curY); ctx.lineTo(W, curY); ctx.stroke();
-
-      ctx.fillStyle = 'rgba(255,255,255,0.5)';
-      ctx.font = '10px Inter, Arial, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText('FRIENDVERSE OFFICIAL', 32, curY + 32);
-      ctx.textAlign = 'right';
-      ctx.fillText('friendshipday-blsx.onrender.com', W - 32, curY + 32);
 
       // ── Download ──
       const dataUrl = cv.toDataURL('image/png');
