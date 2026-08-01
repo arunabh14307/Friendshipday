@@ -223,7 +223,7 @@ export const CardGenerator: React.FC<CardGeneratorProps> = ({ cardData, onUpdate
                   type="text"
                   value={cardData.friendName}
                   onChange={(e) => handleInputChange('friendName', e.target.value)}
-                  placeholder="Enter Friend's Name"
+                  placeholder="Names"
                   className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:outline-none focus:border-[#FF6FB5] transition-colors text-sm"
                 />
               </div>
@@ -234,7 +234,7 @@ export const CardGenerator: React.FC<CardGeneratorProps> = ({ cardData, onUpdate
                   type="text"
                   value={cardData.yourName}
                   onChange={(e) => handleInputChange('yourName', e.target.value)}
-                  placeholder="Enter Your Name"
+                  placeholder="Names"
                   className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:outline-none focus:border-[#FF6FB5] transition-colors text-sm"
                 />
               </div>
@@ -246,7 +246,7 @@ export const CardGenerator: React.FC<CardGeneratorProps> = ({ cardData, onUpdate
                 type="text"
                 value={cardData.tagline}
                 onChange={(e) => handleInputChange('tagline', e.target.value)}
-                placeholder="Enter Friendship Tagline or Motto"
+                placeholder="Partners in Crime & Late Night Pizza"
                 className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:outline-none focus:border-[#FF6FB5] transition-colors text-sm"
               />
             </div>
