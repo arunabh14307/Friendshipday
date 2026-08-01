@@ -1,7 +1,8 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, Download, Share2, Upload, Heart, RefreshCw, Palette, User } from 'lucide-react';
 import html2canvas from 'html2canvas';
+import confetti from 'canvas-confetti';
 import type { FriendshipCardData, CardTheme } from '../types';
 import { encodeCardToUrl, saveCardToLocalStorage } from '../utils/shareUtils';
 
@@ -13,28 +14,123 @@ interface CardGeneratorProps {
 
 export const CardGenerator: React.FC<CardGeneratorProps> = ({ cardData, onUpdateCardData, onOpenShareModal }) => {
   const cardRef = useRef<HTMLDivElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+
+  // Scratch state inside Card
+  const [isScratching, setIsScratching] = useState(false);
+  const [percentScratched, setPercentScratched] = useState(0);
+  const [isUnlocked, setIsUnlocked] = useState(false);
 
   // Mouse tilt variables
   const [rotateX, setRotateX] = useState(0);
   const [rotateY, setRotateY] = useState(0);
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleMouseMoveTilt = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Only tilt if not dragging scratch foil
+    if (isScratching) return;
     const card = e.currentTarget;
     const rect = card.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
-    const rX = ((y - centerY) / centerY) * -10;
-    const rY = ((x - centerX) / centerX) * 10;
+    const rX = ((y - centerY) / centerY) * -8;
+    const rY = ((x - centerX) / centerX) * 8;
     setRotateX(rX);
     setRotateY(rY);
   };
 
-  const handleMouseLeave = () => {
+  const handleMouseLeaveTilt = () => {
     setRotateX(0);
     setRotateY(0);
+    setIsScratching(false);
+  };
+
+  // Canvas Scratch Initialization
+  const initScratchCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const width = (canvas.width = canvas.parentElement?.clientWidth || 280);
+    const height = (canvas.height = 110);
+
+    // Silver metallic gradient foil
+    const grad = ctx.createLinearGradient(0, 0, width, height);
+    grad.addColorStop(0, '#CBD5E1');
+    grad.addColorStop(0.5, '#94A3B8');
+    grad.addColorStop(1, '#64748B');
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+
+    // Text on top of foil
+    ctx.font = 'bold 12px Inter, sans-serif';
+    ctx.fillStyle = '#0F172A';
+    ctx.textAlign = 'center';
+    ctx.fillText('✨ Scratch Foil to Reveal Secret ✨', width / 2, height / 2 + 4);
+
+    setIsUnlocked(false);
+    setPercentScratched(0);
+  };
+
+  useEffect(() => {
+    initScratchCanvas();
+  }, [cardData.secretMessage]);
+
+  const scratch = (clientX: number, clientY: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.beginPath();
+    ctx.arc(x, y, 18, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Check scratch percentage
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    let transparentCount = 0;
+    for (let i = 3; i < imageData.data.length; i += 4) {
+      if (imageData.data[i] === 0) transparentCount++;
+    }
+
+    const pct = Math.round((transparentCount / (canvas.width * canvas.height)) * 100);
+    setPercentScratched(pct);
+
+    if (pct > 40 && !isUnlocked) {
+      setIsUnlocked(true);
+      confetti({
+        particleCount: 40,
+        spread: 55,
+        origin: { y: 0.6 }
+      });
+    }
+  };
+
+  const handleScratchMouseDown = (e: React.MouseEvent) => {
+    setIsScratching(true);
+    scratch(e.clientX, e.clientY);
+  };
+
+  const handleScratchMouseMove = (e: React.MouseEvent) => {
+    if (isScratching) {
+      scratch(e.clientX, e.clientY);
+    }
+  };
+
+  const handleScratchMouseUp = () => setIsScratching(false);
+
+  const handleScratchTouchMove = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    if (touch) scratch(touch.clientX, touch.clientY);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, target: 'friend' | 'your') => {
@@ -110,7 +206,7 @@ export const CardGenerator: React.FC<CardGeneratorProps> = ({ cardData, onUpdate
           </h2>
         </div>
 
-        {/* Grid: Form on Left, Live 3D Preview on Right */}
+        {/* Grid: Form on Left, Live 3D Preview with Embedded Scratch Card on Right */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* Left Form Controls */}
@@ -222,14 +318,14 @@ export const CardGenerator: React.FC<CardGeneratorProps> = ({ cardData, onUpdate
 
           </div>
 
-          {/* Right Live 3D Tilt Card Preview */}
+          {/* Right Live 3D Tilt Card Preview with Integrated Scratch Area */}
           <div className="lg:col-span-6 flex flex-col items-center justify-center space-y-6">
             
             <div className="perspective-1000 w-full max-w-md">
               <motion.div
                 ref={cardRef}
-                onMouseMove={handleMouseMove}
-                onMouseLeave={handleMouseLeave}
+                onMouseMove={handleMouseMoveTilt}
+                onMouseLeave={handleMouseLeaveTilt}
                 animate={{ rotateX, rotateY }}
                 transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                 style={{ transformStyle: 'preserve-3d' }}
@@ -241,7 +337,7 @@ export const CardGenerator: React.FC<CardGeneratorProps> = ({ cardData, onUpdate
                   <Sparkles className="w-5 h-5 text-[#FFD166]" />
                 </div>
 
-                <div className="space-y-6 text-center">
+                <div className="space-y-5 text-center">
                   
                   {/* Top Badge */}
                   <div className="inline-block px-4 py-1 rounded-full bg-white/10 border border-white/20 text-[10px] font-bold tracking-widest uppercase text-white shadow-md">
@@ -249,7 +345,7 @@ export const CardGenerator: React.FC<CardGeneratorProps> = ({ cardData, onUpdate
                   </div>
 
                   {/* Dual Photos Avatar Display */}
-                  <div className="flex items-center justify-center -space-x-4 pt-2">
+                  <div className="flex items-center justify-center -space-x-4 pt-1">
                     <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full p-1 bg-gradient-to-tr from-[#6C63FF] to-[#FF6FB5] shadow-xl">
                       <img
                         src={cardData.friendPhotoUrl}
@@ -284,17 +380,56 @@ export const CardGenerator: React.FC<CardGeneratorProps> = ({ cardData, onUpdate
                   </div>
 
                   {/* Tagline */}
-                  <div className="px-4 py-2 rounded-2xl bg-white/10 border border-white/15 text-xs font-bold text-slate-200">
+                  <div className="px-4 py-1.5 rounded-2xl bg-white/10 border border-white/15 text-xs font-bold text-slate-200">
                     "{cardData.tagline || 'Forever Best Friends'}"
                   </div>
 
                   {/* Heartfelt Note */}
-                  <p className="text-xs sm:text-sm text-slate-200 font-normal leading-relaxed italic px-2">
+                  <p className="text-xs text-slate-200 font-normal leading-relaxed italic px-2">
                     "{cardData.message || 'Happy Friendship Day!'}"
                   </p>
 
+                  {/* Integrated Scratch Card Area inside the 3D Friendship Card */}
+                  <div className="pt-2">
+                    <p className="text-[11px] font-bold text-[#FFD166] mb-1 flex items-center justify-center space-x-1">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Scratch Card Secret Reveal</span>
+                    </p>
+
+                    <div className="relative w-full h-28 rounded-xl overflow-hidden border border-white/30 shadow-xl flex items-center justify-center bg-black/40 p-3 text-center">
+                      {/* Hidden Secret Message Underneath */}
+                      <div className="space-y-1 select-none">
+                        <Heart className="w-5 h-5 text-[#FF6FB5] mx-auto animate-pulse" />
+                        <p className="font-quote text-xs sm:text-sm text-white font-bold leading-snug">
+                          "{cardData.secretMessage}"
+                        </p>
+                        <span className="inline-block text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#FF6FB5]/20 text-[#FF6FB5]">
+                          {isUnlocked ? 'Unlocked 🎉' : 'Keep Scratching...'}
+                        </span>
+                      </div>
+
+                      {/* Canvas Scratch Foil Layer */}
+                      <canvas
+                        ref={canvasRef}
+                        onMouseDown={handleScratchMouseDown}
+                        onMouseMove={handleScratchMouseMove}
+                        onMouseUp={handleScratchMouseUp}
+                        onTouchMove={handleScratchTouchMove}
+                        className="absolute inset-0 cursor-pointer touch-none"
+                      />
+                    </div>
+
+                    <button
+                      onClick={initScratchCanvas}
+                      className="mt-1 text-[10px] font-semibold text-slate-300 hover:text-white flex items-center justify-center space-x-1 mx-auto"
+                    >
+                      <RefreshCw className="w-3 h-3 text-[#FFD166]" />
+                      <span>Reset Foil ({percentScratched}% Scratched)</span>
+                    </button>
+                  </div>
+
                   {/* Card Footer Stamp */}
-                  <div className="pt-4 border-t border-white/15 flex items-center justify-between text-[10px] text-slate-300 font-semibold">
+                  <div className="pt-3 border-t border-white/15 flex items-center justify-between text-[10px] text-slate-300 font-semibold">
                     <span>FRIENDVERSE OFFICIAL</span>
                     <span>AUGUST 2026</span>
                   </div>

@@ -16,7 +16,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleAudio, isAudioActive }) 
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
 
-      const sections = ['hero', 'creator', 'gift', 'certificate', 'scratch'];
+      const sections = ['hero', 'creator', 'gift', 'certificate'];
       const scrollPosition = window.scrollY + 200;
 
       for (const sec of sections) {
@@ -41,7 +41,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleAudio, isAudioActive }) 
     { name: 'Card Creator', href: '#creator', id: 'creator', icon: Sparkles },
     { name: 'Virtual Gift', href: '#gift', id: 'gift', icon: Gift },
     { name: 'Certificate & Badges', href: '#certificate', id: 'certificate', icon: FileText },
-    { name: 'Secret Scratch', href: '#scratch', id: 'scratch', icon: Sparkles },
   ];
 
   return (

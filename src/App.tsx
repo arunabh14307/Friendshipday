@@ -6,7 +6,6 @@ import { CardGenerator } from './components/CardGenerator';
 import { QuoteSection } from './components/QuoteSection';
 import { GiftBox } from './components/GiftBox';
 import { Certificate } from './components/Certificate';
-import { ScratchCard } from './components/ScratchCard';
 import { ShareModal } from './components/ShareModal';
 import { Footer } from './components/Footer';
 
@@ -25,7 +24,6 @@ export function App() {
 
   // Automatic Audio Playback on website open
   useEffect(() => {
-    // Start audio automatically on page load
     guitarSynth.play();
 
     const forceResume = () => {
@@ -33,14 +31,12 @@ export function App() {
       guitarSynth.play();
     };
 
-    // Auto-attempt playback immediately & on window load
     if (document.readyState === 'complete') {
       forceResume();
     } else {
       window.addEventListener('load', forceResume, { once: true });
     }
 
-    // Secondary fallback for strict browser policies
     const events = ['click', 'touchstart', 'pointerdown', 'keydown', 'scroll', 'mousemove'];
     events.forEach(evt => window.addEventListener(evt, forceResume, { once: true }));
 
@@ -92,6 +88,7 @@ export function App() {
       {/* Main Content Sections */}
       <main className="relative z-10 space-y-12">
         <Hero />
+        {/* CardGenerator with integrated Scratch Card inside the Friendship Card */}
         <CardGenerator
           cardData={cardData}
           onUpdateCardData={setCardData}
@@ -103,8 +100,6 @@ export function App() {
           cardData={cardData}
           onOpenShareModal={handleOpenShareModal}
         />
-        {/* Scratch Card rendered at the very end after Certificate */}
-        <ScratchCard secretMessage={cardData.secretMessage} />
       </main>
 
       {/* Share Modal */}
