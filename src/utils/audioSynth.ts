@@ -18,7 +18,7 @@ class AcousticGuitarSynthEngine {
     [164.81, 246.94, 329.63, 392.00, 493.88, 659.25]
   ];
 
-  private initCtx() {
+  public initCtx() {
     if (!this.ctx) {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       this.ctx = new AudioCtx();
@@ -71,7 +71,12 @@ class AcousticGuitarSynthEngine {
 
   public play() {
     this.initCtx();
-    if (this.isPlaying) return;
+    if (this.isPlaying) {
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {});
+      }
+      return;
+    }
     this.isPlaying = true;
 
     let progressionIndex = 0;

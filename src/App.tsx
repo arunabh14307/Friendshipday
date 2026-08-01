@@ -23,30 +23,26 @@ export function App() {
   const [activeShareUrl, setActiveShareUrl] = useState('');
   const [isAudioActive, setIsAudioActive] = useState(true); // Default ON
 
-  // Autoplay Guitar Audio on initial load & first interaction fallback
+  // Autoplay Guitar Audio on website open + eager event listeners for browser autoplay policies
   useEffect(() => {
+    // Attempt immediate playback on mount
     guitarSynth.play();
 
-    const handleFirstUserInteraction = () => {
-      if (guitarSynth.getIsMuted() === false) {
-        guitarSynth.play();
-      }
-      window.removeEventListener('click', handleFirstUserInteraction);
-      window.removeEventListener('keydown', handleFirstUserInteraction);
+    const resumeAudioOnAnyInteraction = () => {
+      guitarSynth.initCtx();
+      guitarSynth.play();
     };
 
-    window.addEventListener('click', handleFirstUserInteraction);
-    window.addEventListener('keydown', handleFirstUserInteraction);
+    const events = ['click', 'touchstart', 'pointerdown', 'keydown', 'scroll', 'mousemove'];
+    events.forEach(evt => window.addEventListener(evt, resumeAudioOnAnyInteraction, { once: true }));
 
     return () => {
-      window.removeEventListener('click', handleFirstUserInteraction);
-      window.removeEventListener('keydown', handleFirstUserInteraction);
+      events.forEach(evt => window.removeEventListener(evt, resumeAudioOnAnyInteraction));
     };
   }, []);
 
   // Check URL payload or LocalStorage on initial load
   useEffect(() => {
-    // Clear any legacy local storage key from old sessions
     try {
       localStorage.removeItem('friendverse_saved_card');
     } catch {}
